@@ -1,0 +1,1561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Neon Runner — Endless Runner</title>
+  <style>
+    :root {
+      --bg: #0c1124;
+      --panel: rgba(15, 23, 42, 0.78);
+      --border: rgba(255, 255, 255, 0.16);
+      --cyan: #22d3ee;
+      --gold: #facc15;
+      --pink: #fb7185;
+      --text: #f8fafc;
+      --muted: rgba(248, 250, 252, 0.72);
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100dvh;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+      overscroll-behavior: none;
+    }
+
+    #app {
+      position: relative;
+      width: 100%;
+      height: 100dvh;
+      overflow: hidden;
+      background: var(--bg);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+
+    .hud {
+      position: absolute;
+      top: max(12px, env(safe-area-inset-top));
+      left: max(12px, env(safe-area-inset-left));
+      right: max(12px, env(safe-area-inset-right));
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .score-card {
+      background: var(--panel);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 10px 14px;
+      min-width: 132px;
+    }
+
+    .score-main {
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: 0.4px;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.1;
+    }
+
+    .score-sub {
+      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .coin-pill {
+      color: var(--gold);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .hud-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      pointer-events: auto;
+    }
+
+    .shield-badge {
+      display: none;
+      align-items: center;
+      gap: 5px;
+      background: rgba(34, 211, 238, 0.16);
+      border: 1px solid rgba(34, 211, 238, 0.55);
+      color: var(--cyan);
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .shield-badge.active {
+      display: inline-flex;
+    }
+
+    .power-badges {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 6px;
+    }
+
+    .power-pill {
+      display: none;
+      align-items: center;
+      gap: 4px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.4px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .power-pill.active {
+      display: inline-flex;
+    }
+
+    .power-pill.magnet {
+      background: rgba(168, 85, 247, 0.2);
+      border: 1px solid rgba(168, 85, 247, 0.65);
+      color: #d8b4fe;
+    }
+
+    .power-pill.double {
+      background: rgba(34, 197, 94, 0.2);
+      border: 1px solid rgba(34, 197, 94, 0.65);
+      color: #86efac;
+    }
+
+    .power-pill.slowmo {
+      background: rgba(56, 189, 248, 0.2);
+      border: 1px solid rgba(56, 189, 248, 0.65);
+      color: #7dd3fc;
+    }
+
+    .shop-card {
+      width: 100%;
+      max-width: 420px;
+      max-height: 84dvh;
+      overflow-y: auto;
+      background: rgba(15, 23, 42, 0.94);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 24px;
+      padding: 20px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+    }
+
+    .shop-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .shop-title {
+      font-size: 20px;
+      font-weight: 900;
+      margin: 0;
+    }
+
+    .shop-bank {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(250, 204, 21, 0.15);
+      border: 1px solid rgba(250, 204, 21, 0.45);
+      color: var(--gold);
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .upgrade-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      text-align: left;
+    }
+
+    .upgrade-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .upgrade-name {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .upgrade-desc {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 2px;
+      line-height: 1.35;
+    }
+
+    .upgrade-pips {
+      display: flex;
+      gap: 4px;
+      margin-top: 6px;
+    }
+
+    .pip {
+      width: 14px;
+      height: 5px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.18);
+    }
+
+    .pip.filled {
+      background: var(--cyan);
+    }
+
+    .buy-btn {
+      flex-shrink: 0;
+      border: none;
+      border-radius: 999px;
+      padding: 8px 14px;
+      background: var(--gold);
+      color: #0f172a;
+      font-size: 12px;
+      font-weight: 900;
+      cursor: pointer;
+      min-width: 78px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .buy-btn:disabled {
+      background: rgba(255, 255, 255, 0.12);
+      color: rgba(255, 255, 255, 0.45);
+      cursor: not-allowed;
+    }
+
+    .icon-btn {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transition: transform 0.12s ease, background 0.15s ease;
+      font-size: 16px;
+      padding: 0;
+    }
+
+    .icon-btn:active {
+      transform: scale(0.92);
+    }
+
+    .touch-controls {
+      position: absolute;
+      bottom: max(16px, env(safe-area-inset-bottom));
+      left: max(16px, env(safe-area-inset-left));
+      right: max(16px, env(safe-area-inset-right));
+      display: flex;
+      justify-content: space-between;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .touch-btn {
+      pointer-events: auto;
+      background: rgba(15, 23, 42, 0.55);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      color: rgba(255, 255, 255, 0.9);
+      border-radius: 999px;
+      padding: 12px 20px;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.6px;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .touch-btn:active {
+      background: rgba(34, 211, 238, 0.28);
+      border-color: var(--cyan);
+      transform: scale(0.95);
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(6, 10, 22, 0.48);
+      z-index: 20;
+    }
+
+    .overlay.hidden {
+      display: none;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 360px;
+      background: rgba(15, 23, 42, 0.9);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 24px;
+      padding: 26px 24px;
+      text-align: center;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
+    }
+
+    .card h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 900;
+      letter-spacing: 0.6px;
+      color: var(--text);
+    }
+
+    .card p {
+      margin: 12px 0 0;
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--muted);
+    }
+
+    .new-best {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(250, 204, 21, 0.18);
+      border: 1px solid rgba(250, 204, 21, 0.5);
+      color: var(--gold);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+    }
+
+    .new-best.hidden {
+      display: none;
+    }
+
+    .btn-row {
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .primary-btn {
+      width: 100%;
+      border: none;
+      border-radius: 999px;
+      padding: 13px 24px;
+      background: var(--cyan);
+      color: #06101f;
+      font-size: 16px;
+      font-weight: 900;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      transition: transform 0.12s ease, filter 0.15s ease;
+    }
+
+    .primary-btn:active {
+      transform: scale(0.97);
+    }
+
+    .secondary-btn {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 11px 20px;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .secondary-btn.hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <canvas id="gameCanvas" aria-label="Neon Runner Game"></canvas>
+
+    <div class="hud">
+      <div class="score-card">
+        <div class="score-main">SCORE <span id="scoreVal">0</span></div>
+        <div class="score-sub">
+          <span class="coin-pill">● <span id="coinsVal">0</span></span>
+          <span>BANK <span id="bankVal">0</span></span>
+          <span>BEST <span id="bestVal">0</span></span>
+        </div>
+      </div>
+
+      <div class="hud-actions">
+        <div class="power-badges">
+          <div id="shieldBadge" class="shield-badge">🛡 SHIELD</div>
+          <div id="magnetBadge" class="power-pill magnet">🧲 <span id="magnetTime">0</span>s</div>
+          <div id="doubleBadge" class="power-pill double">2× <span id="doubleTime">0</span>s</div>
+          <div id="slowmoBadge" class="power-pill slowmo">⏱ <span id="slowmoTime">0</span>s</div>
+        </div>
+        <button id="muteBtn" class="icon-btn" type="button" aria-label="Toggle Sound" title="Toggle Sound">🔊</button>
+        <button id="pauseBtn" class="icon-btn" type="button" aria-label="Pause Game" title="Pause" style="display: none;">⏸</button>
+      </div>
+    </div>
+
+    <div id="touchControls" class="touch-controls" style="display: none;">
+      <button id="slideBtn" class="touch-btn" type="button">SLIDE ↓</button>
+      <button id="jumpBtn" class="touch-btn" type="button">JUMP ↑</button>
+    </div>
+
+    <div id="overlay" class="overlay">
+      <div class="card">
+        <h1 id="overlayTitle">NEON RUNNER</h1>
+        <p id="overlaySub">Tap anywhere or press Space to Jump (double-tap for Double Jump).<br>Swipe down or press ↓ to Slide / Fast-Fall.</p>
+        <div id="newBestTag" class="new-best hidden">★ NEW HIGH SCORE</div>
+        <div class="btn-row">
+          <button id="primaryActionBtn" class="primary-btn" type="button">START RUN</button>
+          <button id="shopOpenBtn" class="secondary-btn" type="button">UPGRADE SHOP 🛒</button>
+          <button id="secondaryActionBtn" class="secondary-btn hidden" type="button">RESTART</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="shopOverlay" class="overlay hidden">
+      <div class="shop-card">
+        <div class="shop-header">
+          <h2 class="shop-title">UPGRADE SHOP</h2>
+          <div class="shop-bank">● <span id="shopBankVal">0</span></div>
+        </div>
+        <div id="upgradeList" class="upgrade-list"></div>
+        <div class="btn-row">
+          <button id="shopCloseBtn" class="primary-btn" type="button">BACK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const STORAGE_KEY = "NeonRunnerWebHighScore";
+      const BANK_KEY = "NeonRunnerWebBankCoins";
+      const UPGRADES_KEY = "NeonRunnerWebUpgrades";
+
+      const canvas = document.getElementById("gameCanvas");
+      const ctx = canvas.getContext("2d");
+
+      const scoreVal = document.getElementById("scoreVal");
+      const coinsVal = document.getElementById("coinsVal");
+      const bankVal = document.getElementById("bankVal");
+      const bestVal = document.getElementById("bestVal");
+      const shieldBadge = document.getElementById("shieldBadge");
+      const magnetBadge = document.getElementById("magnetBadge");
+      const magnetTimeEl = document.getElementById("magnetTime");
+      const doubleBadge = document.getElementById("doubleBadge");
+      const doubleTimeEl = document.getElementById("doubleTime");
+      const slowmoBadge = document.getElementById("slowmoBadge");
+      const slowmoTimeEl = document.getElementById("slowmoTime");
+      const shopOpenBtn = document.getElementById("shopOpenBtn");
+      const shopOverlay = document.getElementById("shopOverlay");
+      const shopBankVal = document.getElementById("shopBankVal");
+      const upgradeList = document.getElementById("upgradeList");
+      const shopCloseBtn = document.getElementById("shopCloseBtn");
+      const muteBtn = document.getElementById("muteBtn");
+      const pauseBtn = document.getElementById("pauseBtn");
+      const touchControls = document.getElementById("touchControls");
+      const slideBtn = document.getElementById("slideBtn");
+      const jumpBtn = document.getElementById("jumpBtn");
+
+      const overlay = document.getElementById("overlay");
+      const overlayTitle = document.getElementById("overlayTitle");
+      const overlaySub = document.getElementById("overlaySub");
+      const newBestTag = document.getElementById("newBestTag");
+      const primaryActionBtn = document.getElementById("primaryActionBtn");
+      const secondaryActionBtn = document.getElementById("secondaryActionBtn");
+
+      let viewWidth = 800;
+      let viewHeight = 450;
+      let dpr = 1;
+
+      function loadHighScore() {
+        try {
+          return parseInt(localStorage.getItem(STORAGE_KEY) || "0", 10) || 0;
+        } catch (e) {
+          return 0;
+        }
+      }
+
+      function saveHighScore(val) {
+        try {
+          localStorage.setItem(STORAGE_KEY, String(val));
+        } catch (e) {}
+      }
+
+      function loadBankCoins() {
+        try {
+          return parseInt(localStorage.getItem(BANK_KEY) || "0", 10) || 0;
+        } catch (e) {
+          return 0;
+        }
+      }
+
+      function saveBankCoins(val) {
+        try {
+          localStorage.setItem(BANK_KEY, String(val));
+        } catch (e) {}
+      }
+
+      function loadUpgrades() {
+        const defaults = { startShield: 0, tripleJump: 0, magnet: 0, overdrive: 0 };
+        try {
+          const raw = localStorage.getItem(UPGRADES_KEY);
+          if (!raw) return defaults;
+          return Object.assign(defaults, JSON.parse(raw));
+        } catch (e) {
+          return defaults;
+        }
+      }
+
+      function saveUpgrades(obj) {
+        try {
+          localStorage.setItem(UPGRADES_KEY, JSON.stringify(obj));
+        } catch (e) {}
+      }
+
+      // Web Audio Synthesizer
+      let audioCtx = null;
+      let isMuted = false;
+
+      function ensureAudio() {
+        if (isMuted) return null;
+        if (!audioCtx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) {
+            audioCtx = new AudioCtx();
+          }
+        }
+        if (audioCtx && audioCtx.state === "suspended") {
+          audioCtx.resume().catch(function () {});
+        }
+        return audioCtx;
+      }
+
+      function playTone(freq, endFreq, duration, type, volume) {
+        if (isMuted) return;
+        const ac = ensureAudio();
+        if (!ac) return;
+        const now = ac.currentTime;
+        const osc = ac.createOscillator();
+        const gain = ac.createGain();
+        osc.type = type || "sine";
+        osc.frequency.setValueAtTime(freq, now);
+        osc.frequency.exponentialRampToValueAtTime(Math.max(20, endFreq), now + duration);
+        gain.gain.setValueAtTime(volume || 0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+        osc.connect(gain);
+        gain.connect(ac.destination);
+        osc.start(now);
+        osc.stop(now + duration);
+      }
+
+      function sfxJump(isDouble) {
+        playTone(isDouble ? 390 : 280, isDouble ? 720 : 540, 0.13, "triangle", 0.12);
+      }
+
+      function sfxCoin() {
+        playTone(880, 1320, 0.11, "sine", 0.1);
+      }
+
+      function sfxShield() {
+        playTone(440, 880, 0.22, "sine", 0.14);
+      }
+
+      function sfxShieldBreak() {
+        playTone(360, 120, 0.22, "sawtooth", 0.14);
+      }
+
+      function sfxCrash() {
+        playTone(190, 45, 0.32, "sawtooth", 0.18);
+      }
+
+      function sfxPowerUp() {
+        playTone(520, 1040, 0.18, "triangle", 0.13);
+      }
+
+      function sfxUpgrade() {
+        playTone(660, 1320, 0.16, "sine", 0.14);
+      }
+
+      const UPGRADE_DEFS = [
+        {
+          id: "startShield",
+          name: "Start Shield",
+          desc: "Begin every run with an active protective shield.",
+          maxLevel: 1,
+          costs: [40]
+        },
+        {
+          id: "tripleJump",
+          name: "Triple Jump",
+          desc: "Unlock a 3rd mid-air jump to clear tall hazards.",
+          maxLevel: 1,
+          costs: [60]
+        },
+        {
+          id: "magnet",
+          name: "Magnet Boost",
+          desc: "Extends Coin Magnet duration (+1.5s per level).",
+          maxLevel: 5,
+          costs: [15, 30, 50, 80, 120]
+        },
+        {
+          id: "overdrive",
+          name: "Overdrive Core",
+          desc: "Extends 2× Score & Chrono Slow-Mo (+1.5s per level).",
+          maxLevel: 5,
+          costs: [15, 30, 50, 80, 120]
+        }
+      ];
+
+      // Game State
+      const PHASE = { READY: "ready", PLAYING: "playing", PAUSED: "paused", GAMEOVER: "gameover" };
+      let phase = PHASE.READY;
+      let score = 0;
+      let coins = 0;
+      let bankCoins = loadBankCoins();
+      let upgrades = loadUpgrades();
+      let highScore = loadHighScore();
+      let hasShield = false;
+      let magnetTimer = 0;
+      let doubleTimer = 0;
+      let slowmoTimer = 0;
+      bestVal.textContent = String(highScore);
+      bankVal.textContent = String(bankCoins);
+
+      // World Tuning
+      const groundHeight = 68;
+      const baseSpeed = 320;
+      let currentSpeed = baseSpeed;
+      const maxSpeed = 760;
+      const gravity = 2100;
+      let distanceAccumulated = 0;
+      let spawnTimer = 0;
+      let nextSpawnInterval = 1.25;
+      let shakeTime = 0;
+      let shakeIntensity = 0;
+
+      // Player
+      const player = {
+        x: 110,
+        y: 0,
+        w: 34,
+        h: 44,
+        vy: 0,
+        jumpsRemaining: 2,
+        isGrounded: true,
+        isSliding: false,
+        slideTimer: 0,
+        tilt: 0,
+        runTime: 0
+      };
+
+      // Entities & Background
+      let stars = [];
+      let farBuildings = [];
+      let midBuildings = [];
+      let obstacles = [];
+      let collectibles = [];
+      let particles = [];
+      let trackOffset = 0;
+
+      function initBackground() {
+        stars = [];
+        for (let i = 0; i < 42; i++) {
+          stars.push({
+            x: Math.random() * Math.max(viewWidth, 1200),
+            y: Math.random() * Math.max(viewHeight - groundHeight - 40, 200) + 15,
+            r: 0.9 + Math.random() * 1.5,
+            a: 0.25 + Math.random() * 0.55
+          });
+        }
+
+        farBuildings = buildSkyline(1600, 165, 42, 82);
+        midBuildings = buildSkyline(1600, 105, 34, 68);
+      }
+
+      function buildSkyline(totalWidth, maxH, minW, maxW) {
+        const list = [];
+        let x = 0;
+        while (x < totalWidth) {
+          const w = minW + Math.random() * (maxW - minW);
+          const h = 42 + Math.random() * (maxH - 42);
+          list.push({ x: x, w: w - 4, h: h });
+          x += w;
+        }
+        return { items: list, width: x };
+      }
+
+      function resizeCanvas() {
+        const rect = canvas.getBoundingClientRect();
+        viewWidth = Math.max(320, rect.width);
+        viewHeight = Math.max(300, rect.height);
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+        canvas.width = Math.floor(viewWidth * dpr);
+        canvas.height = Math.floor(viewHeight * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        player.x = Math.max(64, Math.min(140, viewWidth * 0.18));
+        if (player.isGrounded) {
+          player.y = groundY() - currentPlayerHeight();
+        }
+        draw();
+      }
+
+      function groundY() {
+        return viewHeight - groundHeight;
+      }
+
+      function currentPlayerHeight() {
+        return player.isSliding ? 24 : player.h;
+      }
+
+      function resetWorld() {
+        currentSpeed = baseSpeed;
+        distanceAccumulated = 0;
+        spawnTimer = 0;
+        nextSpawnInterval = 1.15;
+        shakeTime = 0;
+        score = 0;
+        coins = 0;
+        hasShield = upgrades.startShield > 0;
+        magnetTimer = 0;
+        doubleTimer = 0;
+        slowmoTimer = 0;
+
+        obstacles = [];
+        collectibles = [];
+        particles = [];
+
+        player.x = Math.max(64, Math.min(140, viewWidth * 0.18));
+        player.isGrounded = true;
+        player.isSliding = false;
+        player.slideTimer = 0;
+        player.vy = 0;
+        player.jumpsRemaining = upgrades.tripleJump > 0 ? 3 : 2;
+        player.tilt = 0;
+        player.y = groundY() - player.h;
+
+        syncHud();
+      }
+
+      function syncHud() {
+        scoreVal.textContent = String(score);
+        coinsVal.textContent = String(coins);
+        bankVal.textContent = String(bankCoins);
+        bestVal.textContent = String(highScore);
+        shieldBadge.classList.toggle("active", hasShield);
+
+        magnetBadge.classList.toggle("active", magnetTimer > 0);
+        if (magnetTimer > 0) magnetTimeEl.textContent = String(Math.ceil(magnetTimer));
+
+        doubleBadge.classList.toggle("active", doubleTimer > 0);
+        if (doubleTimer > 0) doubleTimeEl.textContent = String(Math.ceil(doubleTimer));
+
+        slowmoBadge.classList.toggle("active", slowmoTimer > 0);
+        if (slowmoTimer > 0) slowmoTimeEl.textContent = String(Math.ceil(slowmoTimer));
+      }
+
+      function renderShop() {
+        shopBankVal.textContent = String(bankCoins);
+        upgradeList.innerHTML = "";
+        UPGRADE_DEFS.forEach(function (up) {
+          const level = upgrades[up.id] || 0;
+          const isMax = level >= up.maxLevel;
+          const cost = isMax ? 0 : up.costs[level];
+
+          const row = document.createElement("div");
+          row.className = "upgrade-row";
+
+          const info = document.createElement("div");
+          const title = document.createElement("div");
+          title.className = "upgrade-name";
+          title.textContent = `${up.name} (Lv ${level}/${up.maxLevel})`;
+
+          const desc = document.createElement("div");
+          desc.className = "upgrade-desc";
+          desc.textContent = up.desc;
+
+          const pips = document.createElement("div");
+          pips.className = "upgrade-pips";
+          for (let i = 0; i < up.maxLevel; i++) {
+            const pip = document.createElement("span");
+            pip.className = "pip" + (i < level ? " filled" : "");
+            pips.appendChild(pip);
+          }
+
+          info.appendChild(title);
+          info.appendChild(desc);
+          info.appendChild(pips);
+
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "buy-btn";
+          if (isMax) {
+            btn.textContent = "MAXED";
+            btn.disabled = true;
+          } else {
+            btn.textContent = `● ${cost}`;
+            btn.disabled = bankCoins < cost;
+            btn.addEventListener("click", function () {
+              buyUpgrade(up.id);
+            });
+          }
+
+          row.appendChild(info);
+          row.appendChild(btn);
+          upgradeList.appendChild(row);
+        });
+      }
+
+      function buyUpgrade(id) {
+        const def = UPGRADE_DEFS.find(function (u) { return u.id === id; });
+        if (!def) return;
+        const level = upgrades[id] || 0;
+        if (level >= def.maxLevel) return;
+        const cost = def.costs[level];
+        if (bankCoins < cost) return;
+
+        bankCoins -= cost;
+        upgrades[id] = level + 1;
+        saveBankCoins(bankCoins);
+        saveUpgrades(upgrades);
+        ensureAudio();
+        sfxUpgrade();
+        syncHud();
+        renderShop();
+      }
+
+      function showOverlay(title, sub, primaryText, secondaryText, isNewBest, showShop) {
+        overlayTitle.textContent = title;
+        overlaySub.innerHTML = sub;
+        primaryActionBtn.textContent = primaryText;
+        if (secondaryText) {
+          secondaryActionBtn.textContent = secondaryText;
+          secondaryActionBtn.classList.remove("hidden");
+        } else {
+          secondaryActionBtn.classList.add("hidden");
+        }
+        shopOpenBtn.classList.toggle("hidden", showShop === false);
+        newBestTag.classList.toggle("hidden", !isNewBest);
+        overlay.classList.remove("hidden");
+      }
+
+      function hideOverlay() {
+        overlay.classList.add("hidden");
+      }
+
+      function startGame() {
+        ensureAudio();
+        resetWorld();
+        phase = PHASE.PLAYING;
+        hideOverlay();
+        pauseBtn.style.display = "inline-flex";
+        pauseBtn.textContent = "⏸";
+        touchControls.style.display = "flex";
+        lastFrameTime = performance.now();
+      }
+
+      function togglePause() {
+        if (phase === PHASE.PLAYING) {
+          phase = PHASE.PAUSED;
+          pauseBtn.textContent = "▶";
+          showOverlay(
+            "PAUSED",
+            "Take a breather before the next wave.",
+            "RESUME",
+            "RESTART",
+            false,
+            false
+          );
+        } else if (phase === PHASE.PAUSED) {
+          phase = PHASE.PLAYING;
+          pauseBtn.textContent = "⏸";
+          hideOverlay();
+          lastFrameTime = performance.now();
+        }
+      }
+
+      function triggerGameOver() {
+        phase = PHASE.GAMEOVER;
+        sfxCrash();
+        shakeTime = 0.25;
+        shakeIntensity = 9;
+        spawnParticles(player.x + player.w / 2, player.y + currentPlayerHeight() / 2, "#fb7185", 14);
+        pauseBtn.style.display = "none";
+        touchControls.style.display = "none";
+
+        bankCoins += coins;
+        saveBankCoins(bankCoins);
+
+        let beatBest = false;
+        if (score > highScore) {
+          highScore = score;
+          saveHighScore(highScore);
+          beatBest = true;
+        }
+        syncHud();
+        showOverlay(
+          "RUN ENDED",
+          `Score: <strong>${score}</strong> &nbsp;•&nbsp; +<strong>${coins}</strong> Coins<br>Bank: <strong>${bankCoins}</strong> &nbsp;•&nbsp; Best: <strong>${highScore}</strong>`,
+          "PLAY AGAIN",
+          null,
+          beatBest,
+          true
+        );
+      }
+
+      // Player Actions
+      function performJump() {
+        if (phase !== PHASE.PLAYING || player.jumpsRemaining <= 0) return;
+        ensureAudio();
+        if (player.isSliding) {
+          endSlide();
+        }
+        const isDouble = !player.isGrounded;
+        player.isGrounded = false;
+        player.jumpsRemaining -= 1;
+        player.vy = isDouble ? -660 : -730;
+        player.tilt = -0.18;
+        sfxJump(isDouble);
+        spawnParticles(player.x + player.w / 2, groundY() - 2, "#e2e8f0", 6);
+      }
+
+      function performSlideOrFastFall() {
+        if (phase !== PHASE.PLAYING) return;
+        ensureAudio();
+        if (!player.isGrounded) {
+          player.vy = Math.max(player.vy, 920);
+        } else if (!player.isSliding) {
+          player.isSliding = true;
+          player.slideTimer = 0.55;
+          player.y = groundY() - currentPlayerHeight();
+        }
+      }
+
+      function endSlide() {
+        if (!player.isSliding) return;
+        player.isSliding = false;
+        player.slideTimer = 0;
+        if (player.isGrounded) {
+          player.y = groundY() - player.h;
+        }
+      }
+
+      // Spawner
+      function spawnWave() {
+        const spawnX = viewWidth + 60;
+        const roll = Math.floor(Math.random() * 10);
+
+        if (roll < 4) {
+          const h = 40 + Math.random() * 28;
+          obstacles.push({ type: "barrier", x: spawnX, y: groundY() - h, w: 28, h: h });
+          spawnCoinArc(spawnX - 24, groundY() - h - 55, 3);
+        } else if (roll < 7) {
+          obstacles.push({ type: "barrier", x: spawnX, y: groundY() - 48, w: 26, h: 48 });
+          obstacles.push({ type: "barrier", x: spawnX + 32, y: groundY() - 48, w: 26, h: 48 });
+          spawnCoinArc(spawnX - 10, groundY() - 115, 4);
+        } else if (roll < 9) {
+          obstacles.push({ type: "drone", x: spawnX, baseY: groundY() - 68, y: groundY() - 68, w: 44, h: 22, t: 0 });
+          spawnCoinLine(spawnX - 24, groundY() - 22, 3);
+        } else {
+          const powerTypes = ["shield", "magnet", "double", "slowmo"];
+          const pType = powerTypes[Math.floor(Math.random() * powerTypes.length)];
+          collectibles.push({ type: pType, x: spawnX, y: groundY() - 96, r: 15, t: 0 });
+          spawnCoinLine(spawnX + 54, groundY() - 36, 4);
+        }
+      }
+
+      function spawnCoinArc(startX, peakY, count) {
+        for (let i = 0; i < count; i++) {
+          const offset = i * 34;
+          const norm = i - (count - 1) / 2;
+          const y = peakY + norm * norm * 12;
+          collectibles.push({ type: "coin", x: startX + offset, y: y, r: 10, t: i * 0.4 });
+        }
+      }
+
+      function spawnCoinLine(startX, y, count) {
+        for (let i = 0; i < count; i++) {
+          collectibles.push({ type: "coin", x: startX + i * 34, y: y, r: 10, t: i * 0.4 });
+        }
+      }
+
+      function spawnParticles(x, y, color, count) {
+        for (let i = 0; i < count; i++) {
+          particles.push({
+            x: x,
+            y: y,
+            vx: -60 + (Math.random() - 0.5) * 180,
+            vy: (Math.random() - 0.7) * 200,
+            r: 2 + Math.random() * 2.5,
+            life: 0.32,
+            maxLife: 0.32,
+            color: color
+          });
+        }
+      }
+
+      // Collision helpers
+      function rectsOverlap(ax, ay, aw, ah, bx, by, bw, bh) {
+        return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+      }
+
+      function rectCircleOverlap(rx, ry, rw, rh, cx, cy, cr) {
+        const closestX = Math.max(rx, Math.min(cx, rx + rw));
+        const closestY = Math.max(ry, Math.min(cy, ry + rh));
+        const dx = cx - closestX;
+        const dy = cy - closestY;
+        return dx * dx + dy * dy < cr * cr;
+      }
+
+      // Update Loop
+      function update(dt) {
+        if (shakeTime > 0) {
+          shakeTime = Math.max(0, shakeTime - dt);
+        }
+
+        // Always animate particles even briefly after crash
+        for (let i = particles.length - 1; i >= 0; i--) {
+          const p = particles[i];
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          p.life -= dt;
+          if (p.life <= 0) {
+            particles.splice(i, 1);
+          }
+        }
+
+        if (phase !== PHASE.PLAYING) return;
+
+        if (magnetTimer > 0) magnetTimer = Math.max(0, magnetTimer - dt);
+        if (doubleTimer > 0) doubleTimer = Math.max(0, doubleTimer - dt);
+        if (slowmoTimer > 0) slowmoTimer = Math.max(0, slowmoTimer - dt);
+
+        const worldDt = slowmoTimer > 0 ? dt * 0.65 : dt;
+        currentSpeed = Math.min(maxSpeed, currentSpeed + worldDt * 9.5);
+        trackOffset = (trackOffset + currentSpeed * worldDt) % 48;
+
+        // Scroll parallax buildings
+        scrollSkyline(farBuildings, currentSpeed * 0.22 * worldDt);
+        scrollSkyline(midBuildings, currentSpeed * 0.48 * worldDt);
+
+        // Slide timer
+        if (player.isSliding) {
+          player.slideTimer -= dt;
+          if (player.slideTimer <= 0) {
+            endSlide();
+          }
+        }
+
+        // Player physics
+        player.runTime += dt * (currentSpeed / 300);
+        if (!player.isGrounded) {
+          player.vy += gravity * dt;
+          player.y += player.vy * dt;
+          player.tilt = Math.min(0, player.tilt + dt * 0.8);
+
+          const floorY = groundY() - currentPlayerHeight();
+          if (player.y >= floorY) {
+            player.y = floorY;
+            player.vy = 0;
+            player.isGrounded = true;
+            player.jumpsRemaining = upgrades.tripleJump > 0 ? 3 : 2;
+            player.tilt = 0;
+          }
+        } else {
+          player.y = groundY() - currentPlayerHeight();
+        }
+
+        // Score (2x multiplier when active)
+        const mult = doubleTimer > 0 ? 2 : 1;
+        distanceAccumulated += currentSpeed * worldDt * 0.12 * mult;
+        const newScore = Math.floor(distanceAccumulated);
+        if (newScore !== score) {
+          score = newScore;
+          scoreVal.textContent = String(score);
+        }
+        syncHud();
+
+        // Spawn waves
+        spawnTimer += worldDt;
+        if (spawnTimer >= nextSpawnInterval) {
+          spawnTimer = 0;
+          const factor = (currentSpeed - baseSpeed) / (maxSpeed - baseSpeed);
+          nextSpawnInterval = (1.05 - 0.35 * factor) + Math.random() * (0.6 - 0.1 * factor);
+          spawnWave();
+        }
+
+        const px = player.x + 3;
+        const py = player.y + 3;
+        const pw = player.w - 6;
+        const ph = currentPlayerHeight() - 6;
+
+        // Obstacles
+        for (let i = obstacles.length - 1; i >= 0; i--) {
+          const ob = obstacles[i];
+          ob.x -= currentSpeed * worldDt;
+          if (ob.type === "drone") {
+            ob.t += dt * 6;
+            ob.y = ob.baseY + Math.sin(ob.t) * 7;
+          }
+          if (ob.x + ob.w < -40) {
+            obstacles.splice(i, 1);
+            continue;
+          }
+          if (rectsOverlap(px, py, pw, ph, ob.x + 2, ob.y + 2, ob.w - 4, ob.h - 4)) {
+            if (hasShield) {
+              hasShield = false;
+              syncHud();
+              sfxShieldBreak();
+              shakeTime = 0.16;
+              shakeIntensity = 6;
+              spawnParticles(ob.x + ob.w / 2, ob.y + ob.h / 2, "#22d3ee", 12);
+              obstacles.splice(i, 1);
+            } else {
+              triggerGameOver();
+              return;
+            }
+          }
+        }
+
+        // Collectibles
+        const pCenterX = player.x + player.w / 2;
+        const pCenterY = player.y + currentPlayerHeight() / 2;
+
+        for (let i = collectibles.length - 1; i >= 0; i--) {
+          const c = collectibles[i];
+          c.x -= currentSpeed * worldDt;
+          c.t += dt * 5;
+
+          // Coin Magnet pull
+          if (c.type === "coin" && magnetTimer > 0) {
+            const dx = pCenterX - c.x;
+            const dy = pCenterY - c.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist < 260 && dist > 1) {
+              const pull = 560 * dt;
+              c.x += (dx / dist) * pull;
+              c.y += (dy / dist) * pull;
+            }
+          }
+
+          if (c.x + c.r < -40) {
+            collectibles.splice(i, 1);
+            continue;
+          }
+          if (rectCircleOverlap(px, py, pw, ph, c.x, c.y, c.r + 3)) {
+            if (c.type === "coin") {
+              coins += 1;
+              distanceAccumulated += doubleTimer > 0 ? 50 : 25;
+              score = Math.floor(distanceAccumulated);
+              sfxCoin();
+              spawnParticles(c.x, c.y, "#facc15", 7);
+            } else if (c.type === "shield") {
+              hasShield = true;
+              sfxShield();
+              spawnParticles(c.x, c.y, "#22d3ee", 10);
+            } else if (c.type === "magnet") {
+              magnetTimer = 6 + (upgrades.magnet || 0) * 1.5;
+              sfxPowerUp();
+              spawnParticles(c.x, c.y, "#a855f7", 10);
+            } else if (c.type === "double") {
+              doubleTimer = 7 + (upgrades.overdrive || 0) * 1.5;
+              sfxPowerUp();
+              spawnParticles(c.x, c.y, "#22c55e", 10);
+            } else if (c.type === "slowmo") {
+              slowmoTimer = 5 + (upgrades.overdrive || 0) * 1.5;
+              sfxPowerUp();
+              spawnParticles(c.x, c.y, "#38bdf8", 10);
+            }
+            syncHud();
+            collectibles.splice(i, 1);
+          }
+        }
+      }
+
+      function scrollSkyline(layer, dx) {
+        for (let i = 0; i < layer.items.length; i++) {
+          const b = layer.items[i];
+          b.x -= dx;
+          if (b.x + b.w < 0) {
+            b.x += layer.width;
+          }
+        }
+      }
+
+      // Render Loop
+      function draw() {
+        ctx.save();
+        if (shakeTime > 0) {
+          const sx = (Math.random() - 0.5) * shakeIntensity * 2;
+          const sy = (Math.random() - 0.5) * shakeIntensity * 2;
+          ctx.translate(sx, sy);
+        }
+
+        // Sky gradient
+        const grad = ctx.createLinearGradient(0, 0, 0, viewHeight);
+        grad.addColorStop(0, "#090d1e");
+        grad.addColorStop(1, "#111b36");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, viewWidth, viewHeight);
+
+        // Stars
+        for (let i = 0; i < stars.length; i++) {
+          const s = stars[i];
+          ctx.fillStyle = `rgba(255,255,255,${s.a})`;
+          ctx.beginPath();
+          ctx.arc(s.x % viewWidth, s.y, s.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Far & mid skylines
+        drawSkyline(farBuildings, "#16203d");
+        drawSkyline(midBuildings, "#1e2c52");
+
+        // Ground track
+        const gy = groundY();
+        ctx.fillStyle = "#101729";
+        ctx.fillRect(0, gy, viewWidth, groundHeight);
+
+        // Track grid ticks
+        ctx.strokeStyle = "rgba(34, 211, 238, 0.16)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let x = -trackOffset; x < viewWidth; x += 48) {
+          ctx.moveTo(x, gy + 4);
+          ctx.lineTo(x - 16, viewHeight);
+        }
+        ctx.stroke();
+
+        // Neon top line
+        ctx.fillStyle = "#22d3ee";
+        ctx.fillRect(0, gy, viewWidth, 3);
+
+        // Collectibles
+        for (let i = 0; i < collectibles.length; i++) {
+          const c = collectibles[i];
+          const scale = 1 + Math.sin(c.t) * 0.1;
+          ctx.save();
+          ctx.translate(c.x, c.y);
+          ctx.scale(scale, scale);
+          if (c.type === "coin") {
+            ctx.fillStyle = "#facc15";
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(0, 0, c.r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+          } else {
+            const palette = {
+              shield: { fill: "rgba(34, 211, 238, 0.28)", stroke: "#22d3ee", label: "🛡" },
+              magnet: { fill: "rgba(168, 85, 247, 0.28)", stroke: "#a855f7", label: "🧲" },
+              double: { fill: "rgba(34, 197, 94, 0.28)", stroke: "#22c55e", label: "2×" },
+              slowmo: { fill: "rgba(56, 189, 248, 0.28)", stroke: "#38bdf8", label: "⏱" }
+            };
+            const st = palette[c.type] || palette.shield;
+            ctx.fillStyle = st.fill;
+            ctx.strokeStyle = st.stroke;
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.arc(0, 0, c.r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 12px sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(st.label, 0, 1);
+          }
+          ctx.restore();
+        }
+
+        // Obstacles
+        for (let i = 0; i < obstacles.length; i++) {
+          const ob = obstacles[i];
+          ctx.save();
+          if (ob.type === "barrier") {
+            ctx.fillStyle = "#fb7185";
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 1.5;
+            roundRect(ctx, ob.x, ob.y, ob.w, ob.h, 5);
+            ctx.fill();
+            ctx.stroke();
+          } else {
+            ctx.fillStyle = "#fb923c";
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 1.5;
+            roundRect(ctx, ob.x, ob.y, ob.w, ob.h, 11);
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = "#0f172a";
+            ctx.beginPath();
+            ctx.arc(ob.x + 12, ob.y + ob.h / 2, 4, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+
+        // Player
+        const ph = currentPlayerHeight();
+        const bob = (player.isGrounded && !player.isSliding && phase === PHASE.PLAYING)
+          ? Math.sin(player.runTime * 14) * 2
+          : 0;
+
+        ctx.save();
+        ctx.translate(player.x + player.w / 2, player.y + ph / 2 + bob);
+        ctx.rotate(player.tilt);
+
+        if (hasShield) {
+          ctx.fillStyle = "rgba(34, 211, 238, 0.16)";
+          ctx.strokeStyle = "#22d3ee";
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.arc(0, 0, 32, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+
+        ctx.fillStyle = "#22d3ee";
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 2;
+        roundRect(ctx, -player.w / 2, -ph / 2, player.w, ph, 8);
+        ctx.fill();
+        ctx.stroke();
+
+        // Visor
+        ctx.fillStyle = "#0b1224";
+        roundRect(ctx, 1, -ph / 2 + (player.isSliding ? 4 : 8), 14, player.isSliding ? 6 : 8, 3);
+        ctx.fill();
+        ctx.restore();
+
+        // Particles
+        for (let i = 0; i < particles.length; i++) {
+          const p = particles[i];
+          ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+        ctx.restore();
+      }
+
+      function drawSkyline(layer, color) {
+        const gy = groundY();
+        ctx.fillStyle = color;
+        for (let i = 0; i < layer.items.length; i++) {
+          const b = layer.items[i];
+          if (b.x > viewWidth || b.x + b.w < 0) continue;
+          ctx.fillRect(b.x, gy - b.h, b.w, b.h);
+        }
+      }
+
+      function roundRect(c, x, y, w, h, r) {
+        const rad = Math.min(r, w / 2, h / 2);
+        c.beginPath();
+        c.moveTo(x + rad, y);
+        c.arcTo(x + w, y, x + w, y + h, rad);
+        c.arcTo(x + w, y + h, x, y + h, rad);
+        c.arcTo(x, y + h, x, y, rad);
+        c.arcTo(x, y, x + w, y, rad);
+        c.closePath();
+      }
+
+      // Animation Loop
+      let lastFrameTime = 0;
+      let rafId = null;
+
+      function loop(now) {
+        if (!lastFrameTime) lastFrameTime = now;
+        const dt = Math.min((now - lastFrameTime) / 1000, 0.05);
+        lastFrameTime = now;
+        update(dt);
+        draw();
+        rafId = requestAnimationFrame(loop);
+      }
+
+      // Input Listeners
+      let touchStartY = null;
+      let swipedDown = false;
+
+      canvas.addEventListener("touchstart", function (e) {
+        if (phase !== PHASE.PLAYING) return;
+        e.preventDefault();
+        if (e.touches.length > 0) {
+          touchStartY = e.touches[0].clientY;
+          swipedDown = false;
+        }
+      }, { passive: false });
+
+      canvas.addEventListener("touchmove", function (e) {
+        if (phase !== PHASE.PLAYING || touchStartY === null || swipedDown) return;
+        e.preventDefault();
+        const dy = e.touches[0].clientY - touchStartY;
+        if (dy > 28) {
+          swipedDown = true;
+          performSlideOrFastFall();
+        }
+      }, { passive: false });
+
+      canvas.addEventListener("touchend", function (e) {
+        if (phase !== PHASE.PLAYING) return;
+        e.preventDefault();
+        if (!swipedDown) {
+          performJump();
+        }
+        touchStartY = null;
+        swipedDown = false;
+      }, { passive: false });
+
+      canvas.addEventListener("mousedown", function () {
+        if (phase === PHASE.PLAYING) {
+          performJump();
+        }
+      });
+
+      jumpBtn.addEventListener("pointerdown", function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+        performJump();
+      });
+
+      slideBtn.addEventListener("pointerdown", function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+        performSlideOrFastFall();
+      });
+
+      window.addEventListener("keydown", function (e) {
+        if (e.code === "Space" || e.code === "ArrowUp" || e.code === "KeyW") {
+          e.preventDefault();
+          if (phase === PHASE.READY || phase === PHASE.GAMEOVER) {
+            startGame();
+          } else {
+            performJump();
+          }
+        } else if (e.code === "ArrowDown" || e.code === "KeyS") {
+          e.preventDefault();
+          performSlideOrFastFall();
+        } else if (e.code === "KeyP" || e.code === "Escape") {
+          if (phase === PHASE.PLAYING || phase === PHASE.PAUSED) {
+            togglePause();
+          }
+        }
+      });
+
+      primaryActionBtn.addEventListener("click", function () {
+        if (phase === PHASE.PAUSED) {
+          togglePause();
+        } else {
+          startGame();
+        }
+      });
+
+      secondaryActionBtn.addEventListener("click", function () {
+        startGame();
+      });
+
+      shopOpenBtn.addEventListener("click", function () {
+        renderShop();
+        shopOverlay.classList.remove("hidden");
+      });
+
+      shopCloseBtn.addEventListener("click", function () {
+        shopOverlay.classList.add("hidden");
+      });
+
+      pauseBtn.addEventListener("click", function () {
+        togglePause();
+      });
+
+      muteBtn.addEventListener("click", function () {
+        isMuted = !isMuted;
+        muteBtn.textContent = isMuted ? "🔇" : "🔊";
+        if (!isMuted) ensureAudio();
+      });
+
+      window.addEventListener("resize", resizeCanvas);
+
+      window.onload = function () {
+        initBackground();
+        resizeCanvas();
+        resetWorld();
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(loop);
+      };
+    })();
+  </script>
+</body>
+</html>
